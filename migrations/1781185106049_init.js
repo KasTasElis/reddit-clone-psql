@@ -1,5 +1,7 @@
+const sql = String.raw;
+
 export const up = (pgm) => {
-  pgm.sql(`
+  pgm.sql(sql`
     CREATE TABLE public.users (
       id uuid NOT NULL,
       username character varying(32) NOT NULL,
@@ -77,5 +79,5 @@ export const up = (pgm) => {
 };
 
 export const down = (pgm) => {
-  pgm.sql(`DROP TABLE IF EXISTS votes, comments, posts, categories, users CASCADE;`);
+  pgm.sql(sql`DROP TABLE IF EXISTS votes, comments, posts, categories, users CASCADE;`);
 };

@@ -34,14 +34,18 @@ This generates a timestamped file in `migrations/`, e.g. `migrations/12345678900
 **2. Write the change**
 
 ```js
+const sql = String.raw;
+
 export const up = (pgm) => {
-  pgm.sql(`CREATE INDEX posts_created_at_idx ON public.posts (created_at);`);
+  pgm.sql(sql`CREATE INDEX posts_created_at_idx ON public.posts (created_at);`);
 };
 
 export const down = (pgm) => {
-  pgm.sql(`DROP INDEX posts_created_at_idx;`);
+  pgm.sql(sql`DROP INDEX posts_created_at_idx;`);
 };
 ```
+
+The `sql` tag enables SQL syntax highlighting in VS Code (built-in). It's just `String.raw` under the hood — no effect on the actual SQL.
 
 - `up` — the change you want to apply
 - `down` — the exact reversal (used by `migrate:down`)
