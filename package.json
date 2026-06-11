@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "migrate": "node-pg-migrate up --dotenv-config-path .env",
+    "migrate:down": "node-pg-migrate down --dotenv-config-path .env",
+    "migrate:create": "node-pg-migrate create --dotenv-config-path .env"
   },
   "keywords": [],
   "author": "",
@@ -12,6 +15,7 @@
   "dependencies": {
     "@faker-js/faker": "^10",
     "dotenv": "^17.4.2",
+    "node-pg-migrate": "^8.0.4",
     "pg": "^8"
   }
 }
