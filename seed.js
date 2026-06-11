@@ -1,42 +1,49 @@
-import 'dotenv/config';
-import pg from 'pg';
-import { faker } from '@faker-js/faker';
-import { randomUUID } from 'node:crypto';
+import "dotenv/config";
+import pg from "pg";
+import { faker } from "@faker-js/faker";
+import { randomUUID } from "node:crypto";
 
 const { Pool } = pg;
 
 if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is required');
+  throw new Error("DATABASE_URL environment variable is required");
 }
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
+// Scale 1 = small/test, each step multiplies by 10x
+const SCALE = 3;
+
 const BATCH_SIZE = 1_000;
-const USER_COUNT = 1_000;
-const CATEGORY_COUNT = 50;
-const POST_COUNT = 100_000;
-const COMMENT_COUNT = 500_000;
-const POST_VOTE_COUNT = 1_000_000;
-const COMMENT_VOTE_COUNT = 1_000_000;
+const USER_COUNT = 100 * 10 ** (SCALE - 1);
+const CATEGORY_COUNT = 10 * 10 ** (SCALE - 1);
+const POST_COUNT = 1_000 * 10 ** (SCALE - 1);
+const COMMENT_COUNT = 5_000 * 10 ** (SCALE - 1);
+const POST_VOTE_COUNT = 10_000 * 10 ** (SCALE - 1);
+const COMMENT_VOTE_COUNT = 10_000 * 10 ** (SCALE - 1);
 
 function buildInsert(table, columns, rowCount) {
   const colCount = columns.length;
-  const placeholders = Array.from({ length: rowCount }, (_, ri) =>
-    `(${Array.from({ length: colCount }, (_, ci) => `$${ri * colCount + ci + 1}`).join(', ')})`
-  ).join(', ');
-  return `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${placeholders}`;
+  const placeholders = Array.from(
+    { length: rowCount },
+    (_, ri) =>
+      `(${Array.from({ length: colCount }, (_, ci) => `$${ri * colCount + ci + 1}`).join(", ")})`,
+  ).join(", ");
+  return `INSERT INTO ${table} (${columns.join(", ")}) VALUES ${placeholders}`;
 }
 
 async function truncateAll(client) {
-  console.log('Truncating tables...');
-  await client.query('TRUNCATE TABLE votes, comments, posts, categories, users CASCADE');
-  console.log('Tables cleared.');
+  console.log("Truncating tables...");
+  await client.query(
+    "TRUNCATE TABLE votes, comments, posts, categories, users CASCADE",
+  );
+  console.log("Tables cleared.");
 }
 
 async function seedUsers(client) {
   console.log(`Seeding ${USER_COUNT} users...`);
   const ids = [];
-  const columns = ['id', 'username', 'email', 'created_at', 'updated_at'];
+  const columns = ["id", "username", "email", "created_at", "updated_at"];
   let batch = [];
 
   for (let i = 0; i < USER_COUNT; i++) {
@@ -45,14 +52,17 @@ async function seedUsers(client) {
     const createdAt = faker.date.past({ years: 2 });
     batch.push([
       id,
-      (faker.internet.username().slice(0, 28) + '_' + i).slice(0, 32),
-      faker.internet.email().replace('@', `_${i}@`).slice(0, 64),
+      (faker.internet.username().slice(0, 28) + "_" + i).slice(0, 32),
+      faker.internet.email().replace("@", `_${i}@`).slice(0, 64),
       createdAt,
       faker.date.between({ from: createdAt, to: new Date() }),
     ]);
 
     if (batch.length === BATCH_SIZE || i === USER_COUNT - 1) {
-      await client.query(buildInsert('users', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("users", columns, batch.length),
+        batch.flat(),
+      );
       console.log(`  users: ${i + 1}/${USER_COUNT}`);
       batch = [];
     }
@@ -63,7 +73,14 @@ async function seedUsers(client) {
 async function seedCategories(client, userIds) {
   console.log(`Seeding ${CATEGORY_COUNT} categories...`);
   const ids = [];
-  const columns = ['id', 'user_id', 'name', 'description', 'created_at', 'updated_at'];
+  const columns = [
+    "id",
+    "user_id",
+    "name",
+    "description",
+    "created_at",
+    "updated_at",
+  ];
   let batch = [];
 
   for (let i = 0; i < CATEGORY_COUNT; i++) {
@@ -80,7 +97,10 @@ async function seedCategories(client, userIds) {
     ]);
 
     if (batch.length === BATCH_SIZE || i === CATEGORY_COUNT - 1) {
-      await client.query(buildInsert('categories', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("categories", columns, batch.length),
+        batch.flat(),
+      );
       console.log(`  categories: ${i + 1}/${CATEGORY_COUNT}`);
       batch = [];
     }
@@ -91,7 +111,15 @@ async function seedCategories(client, userIds) {
 async function seedPosts(client, userIds, categoryIds) {
   console.log(`Seeding ${POST_COUNT} posts...`);
   const ids = [];
-  const columns = ['id', 'user_id', 'category_id', 'title', 'body', 'created_at', 'updated_at'];
+  const columns = [
+    "id",
+    "user_id",
+    "category_id",
+    "title",
+    "body",
+    "created_at",
+    "updated_at",
+  ];
   let batch = [];
 
   for (let i = 0; i < POST_COUNT; i++) {
@@ -109,7 +137,10 @@ async function seedPosts(client, userIds, categoryIds) {
     ]);
 
     if (batch.length === BATCH_SIZE || i === POST_COUNT - 1) {
-      await client.query(buildInsert('posts', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("posts", columns, batch.length),
+        batch.flat(),
+      );
       if ((i + 1) % 10_000 === 0 || i === POST_COUNT - 1) {
         console.log(`  posts: ${i + 1}/${POST_COUNT}`);
       }
@@ -123,7 +154,15 @@ async function seedComments(client, userIds, postIds) {
   console.log(`Seeding ${COMMENT_COUNT} comments...`);
   const insertedIds = [];
   let pendingIds = [];
-  const columns = ['id', 'user_id', 'post_id', 'parent_id', 'body', 'created_at', 'updated_at'];
+  const columns = [
+    "id",
+    "user_id",
+    "post_id",
+    "parent_id",
+    "body",
+    "created_at",
+    "updated_at",
+  ];
   let batch = [];
 
   for (let i = 0; i < COMMENT_COUNT; i++) {
@@ -147,7 +186,10 @@ async function seedComments(client, userIds, postIds) {
     ]);
 
     if (batch.length === BATCH_SIZE || i === COMMENT_COUNT - 1) {
-      await client.query(buildInsert('comments', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("comments", columns, batch.length),
+        batch.flat(),
+      );
       for (const pid of pendingIds) insertedIds.push(pid);
       pendingIds = [];
       batch = [];
@@ -163,7 +205,14 @@ async function seedVotes(client, userIds, postIds, commentIds) {
   console.log(`Seeding ${POST_VOTE_COUNT + COMMENT_VOTE_COUNT} votes...`);
   const votedPost = new Set();
   const votedComment = new Set();
-  const columns = ['id', 'user_id', 'post_id', 'comment_id', 'value', 'created_at'];
+  const columns = [
+    "id",
+    "user_id",
+    "post_id",
+    "comment_id",
+    "value",
+    "created_at",
+  ];
   let batch = [];
 
   for (let i = 0; i < POST_VOTE_COUNT; i++) {
@@ -184,7 +233,10 @@ async function seedVotes(client, userIds, postIds, commentIds) {
     ]);
 
     if (batch.length === BATCH_SIZE || i === POST_VOTE_COUNT - 1) {
-      await client.query(buildInsert('votes', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("votes", columns, batch.length),
+        batch.flat(),
+      );
       batch = [];
       if ((i + 1) % 100_000 === 0 || i === POST_VOTE_COUNT - 1) {
         console.log(`  post votes: ${i + 1}/${POST_VOTE_COUNT}`);
@@ -210,7 +262,10 @@ async function seedVotes(client, userIds, postIds, commentIds) {
     ]);
 
     if (batch.length === BATCH_SIZE || i === COMMENT_VOTE_COUNT - 1) {
-      await client.query(buildInsert('votes', columns, batch.length), batch.flat());
+      await client.query(
+        buildInsert("votes", columns, batch.length),
+        batch.flat(),
+      );
       batch = [];
       if ((i + 1) % 100_000 === 0 || i === COMMENT_VOTE_COUNT - 1) {
         console.log(`  comment votes: ${i + 1}/${COMMENT_VOTE_COUNT}`);
@@ -237,7 +292,7 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
